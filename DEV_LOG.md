@@ -333,3 +333,50 @@ Sample: sample_npc
 
 All 52 files in Assets/Resources/Dialogues/
 Each has 2-3 branching choices with hidden karma via KarmaActionType.
+## Update: 2026-04-08 - Major Design Decisions (Player Feedback)
+
+### 1. BRANCHING PATH SYSTEM (replaces linear board)
+- Board is NO LONGER a straight line. After key ages, the path BRANCHES based on player performance
+- Example: Age 18 (Gaokao) - performance in the exam grid world determines which branch you take:
+  - Good exam -> "University path" (different grid events)
+  - Bad exam -> "Work path" (different grid events)
+- Money/wealth affects branches too: enough money -> business path -> boss or failure
+- Each branch has DIFFERENT grid events, NPCs, and storylines
+- Branches can merge back at certain ages (e.g. everyone hits "midlife crisis" at 35-40)
+- Previous grid world performance accumulates and influences future branches
+
+### 2. NPC RELATIONSHIP SYSTEM (persistent NPCs across grid worlds)
+- NPCs have an AFFINITY/INTIMACY system
+- Interacting positively with an NPC increases affinity
+- When affinity reaches a threshold, that NPC FOLLOWS you to the next grid world
+- Recurring NPCs are NOT shadow people in subsequent worlds (already revealed)
+- NPCs can be life-changing mentors, friends, lovers, rivals
+- NPCs also age, get sick, and can die in later grid worlds
+- Some NPCs can fundamentally change your life path (e.g. a mentor opens a new branch)
+- There is NO absolute right or wrong - just consequences
+
+### 3. GRID WORLD MAIN QUESTS + FORCED EXIT
+- Each grid world has a MAIN QUEST (not just dialogue)
+- Player is FORCED OUT of grid world when certain conditions are met (time limit, quest complete, or triggered event)
+- Hidden quests exist: completing them rewards special items
+
+### 4. SPECIAL ITEMS: Regret Pill + Time Rewind
+- REGRET PILL (Hou Hui Yao): Obtained from hidden quests in grid worlds
+  - Used on the board (dice phase)
+  - Sends player BACK to a specified grid, re-enters that grid world
+  - After exiting, returns to the grid BEFORE where you used the pill
+  - CANNOT re-enter the current grid world after using pill
+- TIME REWIND (Shi Jian Hui Su): Also from hidden quests
+  - Extends time in current grid world (delays forced exit)
+  - Allows more exploration, more NPC interactions, more hidden content
+
+### 5. ASSET/PROPERTY SYSTEM
+- Player can BUY assets: houses, cars, etc.
+- Assets affect a new stat: CHARM/CHARISMA
+- Charm influences NPC interactions, dialogue options, and event outcomes
+- Grid worlds have shops/markets where assets can be purchased
+- Assets persist across grid worlds (you keep your car/house)
+
+### 6. PRIORITY: Focus on first life (no reincarnation improvements for now)
+
+### These are CORE DESIGN RULES. All must be implemented.

@@ -1,43 +1,49 @@
-using System;
+﻿using System;
 
 /// <summary>
-/// 玩家存档数据
+/// Player save data - all persistent state
 /// </summary>
 [Serializable]
 public class PlayerData
 {
-    // 基础信息
-    public string PlayerName = "旅人";
-    public int Gender = 0; // 0=男 1=女
+    // Basic info
+    public string PlayerName = "Traveler";
+    public int Gender = 0; // 0=male 1=female
 
-    // 人生进度
-    public int CurrentAge = 0;          // 当前年龄（=格子位置）
+    // Life progress
+    public int CurrentAge = 0;
     public WorldRealm CurrentRealm = WorldRealm.Mortal;
-    public int ReincarnationCount = 0;  // 转世次数
+    public int ReincarnationCount = 0;
 
-    // 经济
+    // Economy
     public int Gold = 0;
 
-    // 善恶值（决定死后去天堂还是地狱）
-    public int KarmaValue = 0;  // 正=善 负=恶
+    // Hidden karma (player never sees the number)
+    public int KarmaValue = 0;
 
-    // 骰子
+    // Charm (from owned assets - affects NPC interactions)
+    public int Charm = 0;
+
+    // Dice
     public DiceSpeed CurrentDiceSpeed = DiceSpeed.Slow;
-    public int NextSpeedChoiceAge = 20; // 下次可选快慢的年龄
+    public int NextSpeedChoiceAge = 20;
 
-    // 家庭背景（6岁后生成）
+    // Family (generated at age 6)
     public FamilyBackground Family;
 
-    // 成就/物品
+    // Life path
+    public string CurrentLifePath = "default";
+
+    // Items
     public string[] UnlockedItems = Array.Empty<string>();
     public string[] Achievements = Array.Empty<string>();
 
-    // 灵魂记忆（转世后继承）
+    // Soul memories (from previous lives)
     public string[] SoulMemories = Array.Empty<string>();
 
-    /// <summary>
-    /// 获取当前年龄阶段
-    /// </summary>
+    // Regret pill: which grids have been "regretted" (cannot re-enter)
+    public int[] RegrettedGrids = Array.Empty<int>();
+
     public AgePhase GetAgePhase()
     {
         if (CurrentAge <= 12) return AgePhase.Childhood;
@@ -49,14 +55,11 @@ public class PlayerData
     }
 }
 
-/// <summary>
-/// 家庭背景数据
-/// </summary>
 [Serializable]
 public class FamilyBackground
 {
-    public int WealthLevel = 1;     // 1-5 家庭财富等级
-    public int FamilySize = 3;      // 家庭人数
-    public string FamilyTrait = ""; // 家庭特质（如"书香门第""经商世家"）
-    public int InitialGold = 0;     // 初始资金（6岁后根据家庭生成）
+    public int WealthLevel = 1;
+    public int FamilySize = 3;
+    public string FamilyTrait = "";
+    public int InitialGold = 0;
 }
