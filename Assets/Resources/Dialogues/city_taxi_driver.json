@@ -1,0 +1,13 @@
+﻿{
+  "NpcName": "\u51fa\u79df\u8f66\u53f8\u673a",
+  "Nodes": [
+    {"Speaker":"\u53f8\u673a","Text":"\u53bb\u54ea\u513f\uff1f\u4e0a\u8f66\u5427\u3002","NextNodeIndex":-1,"Choices":[
+      {"Text":"\u5e08\u5085\uff0c\u8d70\u6700\u8fd1\u7684\u8def","NextNodeIndex":1,"ActionType":0,"GoldChange":-15},
+      {"Text":"\u5e08\u5085\uff0c\u4e0d\u7740\u6025\uff0c\u968f\u4fbf\u804a\u804a","NextNodeIndex":2,"ActionType":1,"GoldChange":-15},
+      {"Text":"\u6253\u8868\u5427\uff0c\u522b\u7ed5\u8def","NextNodeIndex":3,"ActionType":3,"GoldChange":-15}
+    ]},
+    {"Speaker":"\u53f8\u673a","Text":"\u5f97\u5634\uff01\u6700\u8fd1\u8def\u51b5\u8fd8\u884c\uff0c\u5341\u5206\u949f\u5c31\u5230\u3002","NextNodeIndex":-1,"Choices":null},
+    {"Speaker":"\u53f8\u673a","Text":"\u884c\u554a\uff01\u6211\u5f00\u4e86\u4e8c\u5341\u5e74\u51fa\u79df\uff0c\u4ec0\u4e48\u4e8b\u90fd\u89c1\u8fc7\u3002\u6709\u4e00\u6b21\u554a...","NextNodeIndex":-1,"Choices":null},
+    {"Speaker":"\u53f8\u673a","Text":"\u653e\u5fc3\uff0c\u6211\u8fd9\u4eba\u6700\u5b9e\u5728\u3002","NextNodeIndex":-1,"Choices":null}
+  ]
+}
