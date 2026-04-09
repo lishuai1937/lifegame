@@ -47,6 +47,26 @@ public class LifeGameSceneBuilder : EditorWindow
         var amObj = new GameObject("AudioManager");
         amObj.AddComponent<AudioManager>();
         Undo.RegisterCreatedObjectUndo(amObj, "AM");
+
+        // === ALL NEW SYSTEM MANAGERS ===
+        var sysObj = new GameObject("SystemManagers");
+
+        sysObj.AddComponent<SocialSystem>();
+        sysObj.AddComponent<PhoneSystem>();
+        sysObj.AddComponent<DialogueSystem>();
+        sysObj.AddComponent<NPCEventManager>();
+        sysObj.AddComponent<NPCInfluenceSystem>();
+        sysObj.AddComponent<NPCSpawner>();
+        sysObj.AddComponent<WorldEventSystem>();
+        sysObj.AddComponent<WeatherSystem>();
+        sysObj.AddComponent<EraSystem>();
+        sysObj.AddComponent<AfterlifeManager>();
+        sysObj.AddComponent<SceneGenerator>();
+        sysObj.AddComponent<KarmaTracker>();
+        sysObj.AddComponent<StatGrowth>();
+
+        Undo.RegisterCreatedObjectUndo(sysObj, "Systems");
+        Debug.Log("[LifeGame] All system managers created");
     }
 
     // ==================== 2D Board ====================

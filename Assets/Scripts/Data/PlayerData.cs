@@ -1,14 +1,13 @@
 ﻿using System;
 
 /// <summary>
-/// Player save data - all persistent state
+/// Player save data
 /// </summary>
 [Serializable]
 public class PlayerData
 {
-    // Basic info
     public string PlayerName = "Traveler";
-    public int Gender = 0; // 0=male 1=female
+    public int Gender = 0;
 
     // Life progress
     public int CurrentAge = 0;
@@ -21,28 +20,44 @@ public class PlayerData
     // Hidden karma (player never sees the number)
     public int KarmaValue = 0;
 
-    // Charm (from owned assets - affects NPC interactions)
-    public int Charm = 0;
-
     // Dice
     public DiceSpeed CurrentDiceSpeed = DiceSpeed.Slow;
     public int NextSpeedChoiceAge = 20;
 
-    // Family (generated at age 6)
+    // Family background (generated at age 6)
     public FamilyBackground Family;
 
-    // Life path
-    public string CurrentLifePath = "default";
+    // Dream/Career system
+    public DreamSystem Dream = new DreamSystem();
 
-    // Items
+    // Hidden stats (player doesn't see numbers, only feels effects)
+    public PlayerStats Stats = new PlayerStats();
+
+    // Assets (housing, vehicle, business, investments, collectibles)
+    public AssetSystem Assets = new AssetSystem();
+
+    // Health (physical + mental, diseases, injuries)
+    public HealthSystem Health = new HealthSystem();
+
+    // Education & Skills
+    public SkillSystem Skills = new SkillSystem();
+
+    // Reputation (how society sees you)
+    public ReputationSystem Reputation = new ReputationSystem();
+
+    // Diary (auto-recorded life events)
+    public DiarySystem Diary = new DiarySystem();
+
+    // Last Wishes (bucket list, unlocks at 70)
+    public LastWishSystem LastWishes = new LastWishSystem();
+
+    // Housing (floor plan + furniture slots)
+    public HousingSystem Housing = new HousingSystem();
+
+    // Achievements & memories
     public string[] UnlockedItems = Array.Empty<string>();
     public string[] Achievements = Array.Empty<string>();
-
-    // Soul memories (from previous lives)
     public string[] SoulMemories = Array.Empty<string>();
-
-    // Regret pill: which grids have been "regretted" (cannot re-enter)
-    public int[] RegrettedGrids = Array.Empty<int>();
 
     public AgePhase GetAgePhase()
     {

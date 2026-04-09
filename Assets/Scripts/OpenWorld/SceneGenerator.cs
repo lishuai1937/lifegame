@@ -93,6 +93,12 @@ public class SceneGenerator : MonoBehaviour
                 break;
         }
 
+        // Spawn 100 NPCs
+        float radius = 15f;
+        if (sceneId.Contains("countryside") || sceneId.Contains("beach")) radius = 25f;
+        if (sceneId.Contains("city")) radius = 20f;
+        SpawnBulkNPCs(currentScene.transform, sceneId, age, radius);
+
         // Add lighting based on age phase
         AddSceneLighting(currentScene.transform, age);
 
@@ -432,7 +438,61 @@ public class SceneGenerator : MonoBehaviour
         l.color = new Color(0.8f, 0.2f, 0.1f); l.intensity = 0.6f;
         lt.transform.rotation = Quaternion.Euler(60, 30, 0);
     }
-    // ==================== Lighting by Age ====================
+    /// <summary>
+    /// Spawn 100 NPCs from generated pool, scattered around the scene
+    /// </summary>
+    void SpawnBulkNPCs(Transform parent, string sceneId, int age, float sceneRadius)
+    {
+        List<NPCProfile> pool = null;
+        if (NPCSpawner.Instance != null)
+            pool = NPCSpawner.Instance.GenerateNPCPool(sceneId, age, 100);
+
+        if (pool == null || pool.Count == 0) return;
+
+        var r = new System.Random(sceneId.GetHashCode() + age);
+        foreach (var profile in pool)
+        {
+            float x = (float)(r.NextDouble() * 2 - 1) * sceneRadius;
+            float z = (float)(r.NextDouble() * 2 - 1) * sceneRadius;
+
+            var npcObj = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            npcObj.name = "NPC_" + profile.Name;
+            npcObj.transform.SetParent(parent);
+            npcObj.transform.localPosition = new Vector3(x, 0, z);
+            npcObj.transform.localScale = new Vector3(0.5f, 1, 0.5f);
+
+            // Shadow appearance
+            SetColor(npcObj, Color.black);
+
+            var npc = npcObj.AddComponent<NPC>();
+            npc.NpcName = profile.Name;
+            npc.Role = profile.Role;
+            npc.SetProfile(profile);
+
+            var reveal = npcObj.AddComponent<NPCReveal>();
+            reveal.IsImportantNPC = (profile.Role == NPCRole.Authority || profile.Role == NPCRole.Family);
+            reveal.ShadowColor = Color.black;
+
+            // Add AI behavior (routine + approach logic)
+            var behavior = npcObj.AddComponent<NPCBehavior>();
+            // Check if this NPC will approach player
+            if (SocialSystem.Instance != null)
+            {
+                var stats = GameManager.Instance?.Player?.Stats;
+                behavior.WillApproachPlayer = SocialSystem.Instance.CheckNPCApproachesPlayer(profile, stats);
+            }
+
+            // Trigger collider
+            var col = npcObj.GetComponent<Collider>();
+            if (col != null) Object.Destroy(col);
+            var bc = npcObj.AddComponent<BoxCollider>();
+            bc.isTrigger = true;
+            bc.size = new Vector3(3, 3, 3);
+        }
+
+        Debug.Log($"[SceneGen] Spawned {pool.Count} NPCs in {sceneId}");
+    }
+        // ==================== Lighting by Age ====================
 
     void AddSceneLighting(Transform parent, int age)
     {
