@@ -79,9 +79,9 @@ public class PhoneSystem : MonoBehaviour
         if (rel == null) return new PhoneResult(false, "Unknown contact.");
 
         // Costs energy
-        if (SocialSystem.Instance.CurrentEnergy <= 0)
+        if (SocialSystem.Instance.CurrentUnlockEnergy <= 0)
             return new PhoneResult(false, "You're too tired to call anyone.");
-        SocialSystem.Instance.CurrentEnergy--;
+        SocialSystem.Instance.CurrentUnlockEnergy--;
 
         MarkContacted(npcId);
 

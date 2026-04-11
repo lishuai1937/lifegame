@@ -28,9 +28,9 @@ public class BoardManager : MonoBehaviour
     public TextAsset GridDataJson;
 
     [Header("2D Board Layout")]
-    public float CellSpacing = 2.5f;
+    public float CellSpacing = 2.2f;
     public int CellsPerRow = 10;
-    public float RowHeight = 3f;
+    public float RowHeight = 3.2f;
     public Transform PlayerToken;
     public float TokenMoveSpeed = 8f;
 

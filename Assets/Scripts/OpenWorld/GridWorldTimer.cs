@@ -16,7 +16,7 @@ public class GridWorldTimer : MonoBehaviour
     public float RemainingTime;
     public bool IsRunning = false;
 
-    [Header("Events")]
+    // Events
     public event Action OnTimeWarning;  // 30 seconds left
     public event Action OnTimeUp;       // forced exit
     public event Action OnQuestComplete;// main quest done

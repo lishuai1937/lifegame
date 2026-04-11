@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
@@ -11,20 +12,130 @@ public class GameFlowController : MonoBehaviour
     public BoardManager Board;
     public GameObject PlayerObj, BoardObj;
     public Transform PlayerToken, DiceVisual;
+    public GameObject OpenWorldRoot;
+    public Camera OpenWorldCamera;
 
     Text diceResultText, eventTitle, eventDesc, deathAge, deathGold, deathKarma, realmText;
     Text nameText, ageText, goldText, karmaText;
     GameObject choice1Btn, choice2Btn, continueBtn;
     float diceSpinTimer; bool isSpinning; int diceResult;
+    bool showingEvent = false; // blocks dice rolling while event is shown
+    GridData pendingGrid; // grid waiting to enter open world
+    GameObject openWorldObj;
+    Camera mainCam, owCam;
 
-    void Start() { CacheUI(); BindButtons(); ShowMainMenu(); }
+    void Start()
+    {
+        CacheUI(); BindButtons(); ShowMainMenu();
+        // Find OpenWorld even if inactive - search all root game objects
+        foreach (var root in UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects())
+        {
+            if (root.name == "OpenWorld")
+            {
+                openWorldObj = root;
+                var camT = root.transform.Find("OW_Camera");
+                if (camT != null) owCam = camT.GetComponent<Camera>();
+                break;
+            }
+        }
+        mainCam = Camera.main;
+
+        Debug.Log($"[Flow] Start: openWorldObj={openWorldObj != null}, owCam={owCam != null}, mainCam={mainCam != null}");
+    }
+
+    void EnsurePausePanel()
+    {
+        if (pausePanel != null) return;
+        if (UIManager.Instance == null) return;
+        var canvasT = UIManager.Instance.transform;
+
+        pausePanel = new GameObject("PauseMenuPanel");
+        pausePanel.transform.SetParent(canvasT, false);
+        var rt = pausePanel.AddComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.sizeDelta = Vector2.zero;
+        var bg = pausePanel.AddComponent<Image>();
+        bg.color = new Color(0.05f, 0.03f, 0.1f, 0.92f);
+
+        // Title
+        var title = new GameObject("PauseTitle");
+        title.transform.SetParent(pausePanel.transform, false);
+        var titleRT = title.AddComponent<RectTransform>();
+        titleRT.anchoredPosition = new Vector2(0, 80);
+        titleRT.sizeDelta = new Vector2(400, 60);
+        var titleTxt = title.AddComponent<Text>();
+        titleTxt.text = "= 暂停 =";
+        titleTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        titleTxt.fontSize = 42;
+        titleTxt.alignment = TextAnchor.MiddleCenter;
+        titleTxt.color = new Color(0.3f, 0.9f, 0.95f);
+
+        CreatePauseButton(pausePanel.transform, "ResumeBtn", ">> 继续游戏 <<", new Vector2(0, -10),
+            new Color(0.15f, 0.55f, 0.2f), OnResume);
+        CreatePauseButton(pausePanel.transform, "ExitWorldBtn", "退出到棋盘", new Vector2(0, -90),
+            new Color(0.65f, 0.12f, 0.12f), OnExitWorld);
+
+        pausePanel.SetActive(false);
+    }
+
+    void CreatePauseButton(Transform parent, string name, string label, Vector2 pos, Color color, UnityEngine.Events.UnityAction action)
+    {
+        var btnObj = new GameObject(name);
+        btnObj.transform.SetParent(parent, false);
+        var btnRT = btnObj.AddComponent<RectTransform>();
+        btnRT.anchoredPosition = pos;
+        btnRT.sizeDelta = new Vector2(280, 60);
+        var btnImg = btnObj.AddComponent<Image>();
+        btnImg.color = color;
+        var btn = btnObj.AddComponent<Button>();
+        btn.targetGraphic = btnImg;
+        btn.onClick.AddListener(action);
+
+        var txtObj = new GameObject("Text");
+        txtObj.transform.SetParent(btnObj.transform, false);
+        var txtRT = txtObj.AddComponent<RectTransform>();
+        txtRT.anchorMin = Vector2.zero; txtRT.anchorMax = Vector2.one;
+        txtRT.offsetMin = Vector2.zero; txtRT.offsetMax = Vector2.zero;
+        var txt = txtObj.AddComponent<Text>();
+        txt.text = label;
+        txt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        txt.fontSize = 24;
+        txt.alignment = TextAnchor.MiddleCenter;
+        txt.color = Color.white;
+    }
+
+    GameObject pausePanel;
+    bool isPaused = false;
 
     void Update()
     {
         if (isSpinning) { diceSpinTimer -= Time.deltaTime; if (DiceVisual != null) DiceVisual.Rotate(Vector3.forward * 720 * Time.deltaTime); if (diceSpinTimer <= 0) FinishRoll(); }
-        if (GameManager.Instance != null && GameManager.Instance.CurrentState == GameState.BoardGame && !isSpinning)
+        if (GameManager.Instance != null && GameManager.Instance.CurrentState == GameState.BoardGame && !isSpinning && !showingEvent && !isWalking)
             if (Input.GetKeyDown(KeyCode.Space)) OnRollDice();
+
+        // ESC in open world toggles pause menu
+        if (GameManager.Instance != null && GameManager.Instance.CurrentState == GameState.OpenWorld)
+        {
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                EnsurePausePanel();
+                Debug.Log($"[Flow] ESC pressed! isPaused={isPaused}, pausePanel={pausePanel != null}");
+                isPaused = !isPaused;
+                if (pausePanel != null) pausePanel.SetActive(isPaused);
+                else Debug.LogWarning("[Flow] pausePanel is NULL!");
+            }
+        }
+
+        // Detect return from open world
+        if (wasInOpenWorld && GameManager.Instance != null && GameManager.Instance.CurrentState == GameState.BoardGame)
+        {
+            wasInOpenWorld = false;
+            ExitOpenWorld();
+        }
+        if (GameManager.Instance != null && GameManager.Instance.CurrentState == GameState.OpenWorld)
+            wasInOpenWorld = true;
     }
+
+    bool wasInOpenWorld = false;
 
     void CacheUI()
     {
@@ -56,12 +167,37 @@ public class GameFlowController : MonoBehaviour
     void OnStart()
     {
         var p = new PlayerData { PlayerName = "Player" };
+        p.CurrentAge = 1;
         GameManager.Instance.Player = p;
-        if (Board != null) Board.ResetBoard();
+        if (Board != null)
+        {
+            Board.ResetBoard();
+            Debug.Log($"[Flow] Board spacing={Board.CellSpacing}, rowH={Board.RowHeight}, perRow={Board.CellsPerRow}");
+            Debug.Log($"[Flow] Cell 1 pos={Board.GetCellPosition(0)}, Cell 10 pos={Board.GetCellPosition(9)}, Cell 11 pos={Board.GetCellPosition(10)}");
+        }
         GameManager.Instance.ChangeState(GameState.BoardGame);
         UIManager.Instance.UpdateUI(GameState.BoardGame);
         UIManager.Instance.ShowSpeedChoice(null);
+
+        // Place token on first cell
+        if (PlayerToken != null && Board != null)
+        {
+            Vector3 pos = Board.GetCellPosition(0);
+            pos.y += 1f; pos.z = -0.5f;
+            PlayerToken.position = pos;
+            if (DiceVisual != null) DiceVisual.position = pos + new Vector3(0, 1.5f, 0);
+        }
+
         UpdateHUD();
+
+        // Trigger first grid event (birth) immediately
+        if (Board != null && Board.AllGrids != null)
+        {
+            foreach (var g in Board.AllGrids)
+            {
+                if (g.Age == 1) { ShowEvent(g); return; }
+            }
+        }
     }
 
     void OnSpeed(DiceSpeed s)
@@ -73,10 +209,11 @@ public class GameFlowController : MonoBehaviour
 
     void OnRollDice()
     {
-        if (isSpinning) return;
+        if (isSpinning || showingEvent || isWalking) return;
         diceResult = DiceSystem.Roll(GameManager.Instance.Player.CurrentDiceSpeed);
         isSpinning = true; diceSpinTimer = 0.8f;
         if (diceResultText != null) diceResultText.text = "...";
+        Debug.Log($"[Flow] OnRollDice: rolled {diceResult}");
     }
 
     void FinishRoll()
@@ -84,39 +221,74 @@ public class GameFlowController : MonoBehaviour
         isSpinning = false;
         if (DiceVisual != null) DiceVisual.rotation = Quaternion.identity;
         if (diceResultText != null) diceResultText.text = diceResult.ToString();
+        Debug.Log($"[Flow] FinishRoll: diceResult={diceResult}");
 
         if (Board != null)
         {
             var p = GameManager.Instance.Player;
             int oldAge = p.CurrentAge;
             int newAge = Mathf.Min(oldAge + diceResult, 100);
-            p.CurrentAge = newAge;
-            Board.CurrentGridIndex = newAge;
-
-            if (PlayerToken != null)
-            {
-                Vector3 target = Board.GetCellPosition(newAge - 1); target.y += 1f; target.z = -0.5f;
-                PlayerToken.position = target;
-                if (DiceVisual != null) DiceVisual.position = target + new Vector3(0, 1.5f, 0);
-            }
-
-            UpdateHUD();
-
-            // Find event in range
-            if (Board.AllGrids != null)
-                foreach (var g in Board.AllGrids)
-                    if (g.Age <= newAge && g.Age > oldAge) { ShowEvent(g); return; }
-
-            if (newAge >= 100) ShowDeath();
+            // Start walking animation coroutine
+            StartCoroutine(WalkToAge(oldAge, newAge));
         }
+        else
+        {
+            Debug.LogWarning("[Flow] Board is NULL!");
+        }
+    }
+
+    bool isWalking = false;
+
+    IEnumerator WalkToAge(int fromAge, int toAge)
+    {
+        isWalking = true;
+        var p = GameManager.Instance.Player;
+
+        for (int age = fromAge + 1; age <= toAge; age++)
+        {
+            // Snap directly to cell center
+            Vector3 cellPos = Board.GetCellPosition(age - 1);
+            PlayerToken.position = new Vector3(cellPos.x, cellPos.y + 1f, -0.5f);
+            if (DiceVisual != null) DiceVisual.position = PlayerToken.position + new Vector3(0, 1.5f, 0);
+
+            // Brief pause so player can see the movement
+            yield return new WaitForSeconds(0.15f);
+        }
+
+        p.CurrentAge = toAge;
+        Board.CurrentGridIndex = toAge;
+        UpdateHUD();
+
+        isWalking = false;
+
+        if (Board.AllGrids != null)
+        {
+            foreach (var g in Board.AllGrids)
+            {
+                if (g.Age == toAge)
+                {
+                    Debug.Log($"[Flow] Landed on age {g.Age} - {g.Title}");
+                    ShowEvent(g);
+                    yield break;
+                }
+            }
+        }
+
+        if (toAge >= 100) ShowDeath();
     }
 
     void ShowEvent(GridData g)
     {
-        UIManager.Instance.UpdateUI(GameState.BoardGame);
-        var ep = GameObject.Find("EventDialogPanel"); if (ep != null) ep.SetActive(true);
+        pendingGrid = g;
+        showingEvent = true;
+        Debug.Log($"[Flow] ShowEvent: age {g.Age} - {g.Title}");
+
+        // Hide dice panel, show event dialog via UIManager references
+        if (UIManager.Instance.DicePanel != null) UIManager.Instance.DicePanel.SetActive(false);
+        if (UIManager.Instance.EventDialogPanel != null) UIManager.Instance.EventDialogPanel.SetActive(true);
+
         if (eventTitle != null) eventTitle.text = g.Age + " - " + g.Title;
-        if (eventDesc != null) eventDesc.text = g.Description;
+        if (eventDesc != null) eventDesc.text = g.Description + "\n\n[Click Continue to enter this world]";
         if (choice1Btn != null) choice1Btn.SetActive(false);
         if (choice2Btn != null) choice2Btn.SetActive(false);
         if (continueBtn != null) continueBtn.SetActive(true);
@@ -125,15 +297,15 @@ public class GameFlowController : MonoBehaviour
 
         if (g.HasDeathRisk && Random.value < g.DeathProbability)
         {
-            if (eventDesc != null) eventDesc.text = g.Description + "\n\n...";
+            pendingGrid = null;
+            if (eventDesc != null) eventDesc.text = g.Description + "\n\n...You didn't make it.";
             if (StatGrowth.Instance != null && g.DeathProbability >= 0.3f)
-                StatGrowth.Instance.OnSurvivedHighDeathProb(g.DeathProbability); // ironic: they didn't survive
+                StatGrowth.Instance.OnSurvivedHighDeathProb(g.DeathProbability);
             if (continueBtn != null) { var btn = continueBtn.GetComponent<Button>(); if (btn != null) { btn.onClick.RemoveAllListeners(); btn.onClick.AddListener(ShowDeath); } }
             return;
         }
         else if (g.HasDeathRisk)
         {
-            // Survived death risk!
             if (StatGrowth.Instance != null)
             {
                 StatGrowth.Instance.OnSurvivedDeathRisk();
@@ -146,11 +318,144 @@ public class GameFlowController : MonoBehaviour
 
     void OnContinue()
     {
-        var ep = GameObject.Find("EventDialogPanel"); if (ep != null) ep.SetActive(false);
+        Debug.Log($"[Flow] OnContinue called. pendingGrid={pendingGrid != null} openWorldObj={openWorldObj != null} owCam={owCam != null} mainCam={mainCam != null}");
+        showingEvent = false;
+        if (UIManager.Instance.EventDialogPanel != null) UIManager.Instance.EventDialogPanel.SetActive(false);
         if (continueBtn != null) { var btn = continueBtn.GetComponent<Button>(); if (btn != null) { btn.onClick.RemoveAllListeners(); btn.onClick.AddListener(OnContinue); } }
+
+        if (pendingGrid != null)
+        {
+            Debug.Log($"[Flow] pendingGrid age={pendingGrid.Age} sceneId={pendingGrid.SceneId}");
+            EnterOpenWorld(pendingGrid);
+            pendingGrid = null;
+            return;
+        }
+
+        Debug.Log("[Flow] No pendingGrid, returning to board");
         UpdateHUD();
         if (GameManager.Instance.Player.CurrentAge >= 100) { ShowDeath(); return; }
         UIManager.Instance.UpdateUI(GameState.BoardGame);
+    }
+
+    void EnterOpenWorld(GridData grid)
+    {
+        Debug.Log($"[Flow] === ENTERING OPEN WORLD === age {grid.Age} - {grid.Title} sceneId={grid.SceneId}");
+        Debug.Log($"[Flow] openWorldObj={openWorldObj != null}, mainCam={mainCam != null}, owCam={owCam != null}");
+        Debug.Log($"[Flow] SceneGenerator.Instance={SceneGenerator.Instance != null}");
+
+        // Generate scene at OpenWorld position
+        if (SceneGenerator.Instance != null)
+        {
+            SceneGenerator.Instance.ClearScene();
+            var generated = SceneGenerator.Instance.Generate(grid.SceneId ?? "home_child", grid.Age);
+            if (generated != null)
+            {
+                // Place generated scene at OpenWorld's position
+                generated.transform.position = openWorldObj.transform.position;
+            }
+        }
+
+        // Activate open world area and hide pre-built objects
+        if (openWorldObj != null)
+        {
+            openWorldObj.SetActive(true);
+            // Hide pre-built buildings/event points, keep Player and OW_Camera
+            foreach (Transform child in openWorldObj.transform)
+            {
+                if (child.name != "Player" && child.name != "OW_Camera" && child.name != "OW_Ground" && child.name != "OW_Light")
+                    child.gameObject.SetActive(false);
+            }
+        }
+
+        // Switch cameras - find OW_Camera after OpenWorld is activated
+        if (mainCam != null) { mainCam.enabled = false; Debug.Log("[Flow] MainCam disabled"); }
+        else Debug.LogWarning("[Flow] mainCam is NULL!");
+
+        // Always re-find OW_Camera since it's a child of OpenWorld (was inactive before)
+        if (openWorldObj != null)
+        {
+            var owCamObj = openWorldObj.transform.Find("OW_Camera");
+            if (owCamObj != null) owCam = owCamObj.GetComponent<Camera>();
+        }
+        if (owCam != null) { owCam.enabled = true; Debug.Log("[Flow] OW_Camera enabled"); }
+        else Debug.LogWarning("[Flow] owCam is NULL! No open world camera.");
+
+        // Hide board
+        if (BoardObj != null) BoardObj.SetActive(false);
+
+        // Reset player position to ground level in open world
+        var player = openWorldObj?.GetComponentInChildren<PlayerController>();
+        if (player != null)
+        {
+            var cc = player.GetComponent<CharacterController>();
+            if (cc != null) cc.enabled = false; // disable to teleport
+            player.transform.localPosition = new Vector3(0, 1.5f, 0);
+            if (cc != null) cc.enabled = true;
+        }
+
+        // Initialize social system
+        if (SocialSystem.Instance != null)
+            SocialSystem.Instance.EnterWorld(grid.Age);
+
+        // Start timer
+        if (GridWorldTimer.Instance != null)
+            GridWorldTimer.Instance.StartTimer(grid.Age);
+
+        // Change state
+        GameManager.Instance.EnterGridWorld(grid.Age);
+        UIManager.Instance.UpdateUI(GameState.OpenWorld);
+        Debug.Log($"[Flow] === OPEN WORLD ENTERED === state={GameManager.Instance.CurrentState}");
+    }
+
+    void ExitOpenWorld()
+    {
+        Debug.Log("[Flow] Exiting open world, back to board");
+
+        // Hide pause menu if open
+        isPaused = false;
+        if (pausePanel != null) pausePanel.SetActive(false);
+
+        // Deactivate open world
+        if (openWorldObj != null) openWorldObj.SetActive(false);
+
+        // Switch cameras back
+        if (owCam != null) owCam.enabled = false;
+        if (mainCam != null) mainCam.enabled = true;
+
+        // Show board
+        if (BoardObj != null) BoardObj.SetActive(true);
+
+        // Restore player token to correct board position
+        if (PlayerToken != null && Board != null)
+        {
+            int currentAge = GameManager.Instance.Player.CurrentAge;
+            Vector3 pos = Board.GetCellPosition(currentAge - 1);
+            pos.y += 1f; pos.z = -0.5f;
+            PlayerToken.position = pos;
+            if (DiceVisual != null) DiceVisual.position = pos + new Vector3(0, 1.5f, 0);
+        }
+
+        // Clear generated scene
+        if (SceneGenerator.Instance != null)
+            SceneGenerator.Instance.ClearScene();
+
+        UpdateHUD();
+        if (GameManager.Instance.Player.CurrentAge >= 100) { ShowDeath(); return; }
+        UIManager.Instance.UpdateUI(GameState.BoardGame);
+    }
+
+    void OnResume()
+    {
+        isPaused = false;
+        if (pausePanel != null) pausePanel.SetActive(false);
+    }
+
+    void OnExitWorld()
+    {
+        isPaused = false;
+        if (pausePanel != null) pausePanel.SetActive(false);
+        var player = openWorldObj?.GetComponentInChildren<PlayerController>();
+        if (player != null) player.ExitWorld();
     }
 
     void ShowDeath()
@@ -304,10 +609,10 @@ public class GameFlowController : MonoBehaviour
     void UpdateHUD()
     {
         var p = GameManager.Instance.Player;
-        if (nameText != null) nameText.text = p.PlayerName;
-        if (ageText != null) ageText.text = "Age: " + p.CurrentAge;
-        if (goldText != null) goldText.text = "Gold: " + p.Gold;
-        if (karmaText != null) karmaText.text = ""; // hidden
+        if (nameText != null) nameText.text = "> " + p.PlayerName;
+        if (ageText != null) ageText.text = "年龄: " + p.CurrentAge;
+        if (goldText != null) goldText.text = "金币: " + p.Gold;
+        if (karmaText != null) karmaText.text = "";
     }
 
     Text FT(GameObject r, string n) { foreach (var t in r.GetComponentsInChildren<Text>(true)) if (t.name == n) return t; return null; }

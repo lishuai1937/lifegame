@@ -103,7 +103,7 @@ public class NPCEventManager : MonoBehaviour
         // Attending boosts relationship
         if (SocialSystem.Instance != null)
         {
-            SocialSystem.Instance.InteractWith(invite.NpcId, SocialAction.Help);
+            SocialSystem.Instance.ChatWith(invite.NpcId, SocialAction.Help);
         }
 
         switch (invite.Event.Type)
@@ -160,8 +160,8 @@ public class NPCEventManager : MonoBehaviour
         // Big relationship boost
         if (SocialSystem.Instance != null)
         {
-            SocialSystem.Instance.InteractWith(invite.NpcId, SocialAction.Help);
-            SocialSystem.Instance.InteractWith(invite.NpcId, SocialAction.Gift); // double boost
+            SocialSystem.Instance.ChatWith(invite.NpcId, SocialAction.Help);
+            SocialSystem.Instance.ChatWith(invite.NpcId, SocialAction.Gift); // double boost
         }
 
         if (KarmaTracker.Instance != null)
@@ -180,7 +180,7 @@ public class NPCEventManager : MonoBehaviour
         // Relationship takes a hit (bigger hit for important events)
         if (SocialSystem.Instance != null)
         {
-            SocialSystem.Instance.InteractWith(invite.NpcId, SocialAction.Ignore);
+            SocialSystem.Instance.ChatWith(invite.NpcId, SocialAction.Ignore);
         }
 
         switch (invite.Event.Type)
